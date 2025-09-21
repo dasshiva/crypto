@@ -1,8 +1,9 @@
 #include "chacha20.h"
-
 #ifndef MEMCPY_IMPL_NEEDED
 #include <string.h>
 #endif
+
+// Copyright(C) 2025 Shivashish Das. Licensed under the MIT License
 
 #ifdef MEMCPY_IMPL_NEEDED
 void* memcpy(void* dest, const void* src, uint64_t size) {

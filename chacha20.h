@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+// Copyright(C) 2025 Shivashish Das. Licensed under the MIT License
+
 void Encrypt(void* data, const uint64_t size, const void* key, 
         const void* nonce);
 

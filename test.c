@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+
+// Copyright(C) 2025 Shivashish Das. Licensed under the MIT License
+
 // ChaCha20 test vector from RFC 7539
 const char* str = "Ladies and Gentlemen of the class of '99: If I could offer you only one tip for the future, sunscreen would be it.";
 int main() {
