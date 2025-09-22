@@ -54,7 +54,6 @@ int main() {
         return 1;
     } 
 
-    printf("All Tests passed\n");
-
+    printf("ChaCha20 passed all tests.\n"); 
     return 0;
 }

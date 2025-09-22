@@ -20,7 +20,7 @@ void* memcpy(void* dest, const void* src, uint64_t size) {
 #endif
 
 /* This file implements the ChaCha20 Stream Cipher by D.J Bernstein as 
- * specified in RFC 7539. Comments in the code are excerpts from the RFC
+ * specified in RFC 8439. Comments in the code are excerpts from the RFC
  * to explain why something is being done or implementation notes.
  *
  * This implementation of ChaCha20 can be safely used in multi-threaded 
@@ -203,6 +203,71 @@ void Encrypt(void* d, const uint64_t size, const void* k, const void* n) {
         uint8_t* block = (uint8_t*)state.cc_state;
         for (int j = 0; j < (size % 64); j++) {
             data[i * 64 + j] ^= block[j];
+        }
+    }
+}
+
+
+static void Poly1305GenKey(CryptState* state, const uint8_t* k, const uint8_t* n) {
+    /*
+     * poly1305_key_gen(key,nonce):
+     *   counter = 0
+     *   block = chacha20_block(key,counter,nonce)
+     *   return block[0..31]
+     *   end */
+    state->counter = 0;
+    memcpy(state->key, k, 8 * sizeof(uint32_t));
+    memcpy(state->nonce, n, 3 * sizeof(uint32_t));
+    ChaCha20Block(state);
+
+    // The returned key is present in state->cc_state[0..7]
+}
+
+void Poly1305MAC(uint8_t* tag, const void* msg, const uint64_t size, const void* key, const void* nonce) {
+    CryptState ks;
+    Poly1305GenKey(&ks, key, nonce);
+    uint8_t* r = (uint8_t*) ks.cc_state;
+
+    // clamp r - code obtained RFC 8439 which in turn is adapated from
+    // poly1305aes_test_clamp.c version 20050207 D. J. Bernstein Public domain.
+    r[3] &= 15;
+    r[7] &= 15;
+    r[11] &= 15;
+    r[15] &= 15;
+    r[4] &= 252;
+    r[8] &= 252;
+    r[12] &= 252;
+
+    uint8_t* s = (uint8_t*) (ks.cc_state + 4);
+    const uint8_t P[] = { 0x03, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+        0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfb };
+    const uint8_t* start = msg;
+    
+    // the tag is the final answer so we don't create an accumulator separately
+    uint64_t nblocks = (size % 16 == 0) ? size/16 : (size/16) + 1; 
+    for (uint64_t i = 1; i <= nblocks; i++) {
+        uint8_t n[17] = {0};
+        uint64_t used = 0;
+        if (size > 16) {
+            memcpy(n, start + ((i - 1) * 16), 16);
+            size -= 16;
+            used = 16;
+            n[16] = 0x1;
+        }
+
+        else {
+            memcpy(n, start + ((i - 1) * 16), size);
+            used = size;
+            n[size] = 0x1;
+        }
+
+        uint8_t carry = 0;
+        for (int j = 0; j <= used; j++) {
+            uint16_t sum = ((uint16_t)tag[i]) + ((uint16_t)n[i]) + carry;
+            if (sum > 0xff)
+                carry = 1;
+            else
+                carry = 0;
         }
     }
 }
